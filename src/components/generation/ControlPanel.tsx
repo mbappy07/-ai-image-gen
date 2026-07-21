@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ImageUploader } from "./ImageUploader";
 import { PromptInput } from "./PromptInput";
@@ -41,40 +40,52 @@ export function ControlPanel({
   };
 
   return (
-    <Card className="h-full rounded-none border-0 shadow-none bg-transparent">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <span className="size-2 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600" />
-          创建参数
-        </CardTitle>
-      </CardHeader>
+    <div className="h-full flex flex-col">
+      {/* 标题区 */}
+      <div className="px-5 pt-5 pb-3">
+        <div className="flex items-center gap-2.5 mb-1">
+          <span className="size-2.5 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 shadow-sm shadow-purple-500/30" />
+          <h2 className="text-base font-semibold text-foreground">创建图片</h2>
+        </div>
+        <p className="text-xs text-muted-foreground/70">填写参数后点击生成，AI 将为您创作图片</p>
+      </div>
 
-      <CardContent className="space-y-5">
-        <ImageUploader
-          onUpload={setReferenceImage}
-          onRemove={() => setReferenceImage(undefined)}
-        />
+      <Separator />
 
-        <Separator />
+      {/* 内容区 */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-5 space-y-6">
 
-        <PromptInput value={prompt} onChange={setPrompt} />
+          {/* 图片描述 */}
+          <PromptInput value={prompt} onChange={setPrompt} />
 
-        <RatioSelector value={ratio} onChange={setRatio} />
+          {/* 参考图 */}
+          <ImageUploader
+            onUpload={setReferenceImage}
+            onRemove={() => setReferenceImage(undefined)}
+          />
 
-        <QuantitySelector value={quantity} onChange={setQuantity} />
+          {/* 比例 & 数量 */}
+          <div className="grid grid-cols-1 gap-5">
+            <RatioSelector value={ratio} onChange={setRatio} />
+            <QuantitySelector value={quantity} onChange={setQuantity} />
+          </div>
 
-        <GenerateButton
-          onClick={handleGenerate}
-          status={status}
-          disabled={!canGenerate}
-        />
-
-        {!canGenerate && status === "idle" && (
-          <p className="text-xs text-center text-muted-foreground">
-            请输入图片描述后开始生成
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          {/* 生成按钮 */}
+          <div className="pt-1">
+            <GenerateButton
+              onClick={handleGenerate}
+              status={status}
+              disabled={!canGenerate}
+            />
+            {!canGenerate && status === "idle" && (
+              <p className="mt-2.5 text-[11px] text-center text-muted-foreground/60">
+                输入描述后即可开始生成
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

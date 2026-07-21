@@ -87,32 +87,34 @@ function GenerateContent() {
   const isBusy = status === "loading";
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-muted/40">
       <Navbar />
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-screen-2xl mx-auto w-full lg:gap-4 lg:p-4">
         {/* 移动端折叠按钮 */}
         <button
           type="button"
           onClick={() => setPanelOpen(!panelOpen)}
-          className="lg:hidden flex items-center justify-center gap-1.5 h-10 shrink-0 border-b border-border bg-card/50 text-xs text-muted-foreground"
+          className="lg:hidden flex items-center justify-center gap-2 h-11 shrink-0 border-b border-border/50 bg-card text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
         >
-          {panelOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          <span className={`transition-transform duration-300 ${panelOpen ? "rotate-180" : ""}`}>
+            <ChevronUp className="size-3.5" />
+          </span>
           {panelOpen ? "收起参数面板" : "展开参数面板"}
         </button>
 
-        {/* 控制面板 — 桌面端始终可见，移动端可折叠 */}
+        {/* 控制面板 */}
         <aside
           className={cn(
-            "shrink-0 border-border bg-card/50 overflow-auto",
-            "lg:w-[420px] lg:border-r lg:block",
-            panelOpen ? "block" : "hidden",
+            "shrink-0 overflow-auto transition-all duration-300",
+            "lg:w-[440px] lg:rounded-2xl lg:border lg:border-border/60 lg:shadow-sm lg:bg-card lg:max-h-none",
+            panelOpen ? "max-h-none" : "max-h-0 lg:max-h-none",
           )}
         >
           <ControlPanel onGenerate={handleGenerate} status={status} initialPrompt={initialPrompt} />
         </aside>
 
         {/* 结果展示 */}
-        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 lg:rounded-2xl lg:border lg:border-border/60 lg:shadow-sm bg-card overflow-hidden">
           <ResultGallery
             images={images}
             isLoading={isBusy}
@@ -128,10 +130,10 @@ function GenerateContent() {
 
 function GenerateSkeleton() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
-      <div className="h-12 shrink-0 border-b border-border bg-card/50" />
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <aside className="lg:w-[420px] w-full shrink-0 lg:border-r border-b lg:border-b-0 border-border bg-card/50 p-4 space-y-4">
+    <div className="h-screen flex flex-col overflow-hidden bg-muted/40">
+      <div className="h-12 shrink-0 border-b border-border/50" />
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-screen-2xl mx-auto lg:gap-4 lg:p-4 w-full">
+        <aside className="lg:w-[440px] w-full shrink-0 lg:rounded-2xl lg:border lg:border-border/60 lg:shadow-sm bg-card border-b lg:border-b-0 border-border p-4 space-y-4">
           <Skeleton className="h-32 w-full rounded-xl" />
           <Skeleton className="h-24 w-full rounded-xl" />
           <div className="flex gap-2">
@@ -141,7 +143,9 @@ function GenerateSkeleton() {
           </div>
           <Skeleton className="h-10 w-full rounded-xl" />
         </aside>
-        <main className="flex-1 p-4"><Skeleton className="h-full w-full rounded-xl" /></main>
+        <main className="flex-1 lg:rounded-2xl lg:border lg:border-border/60 lg:shadow-sm bg-card p-4">
+          <Skeleton className="h-full w-full rounded-xl" />
+        </main>
       </div>
     </div>
   );

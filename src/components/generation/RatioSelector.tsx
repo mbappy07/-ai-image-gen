@@ -3,18 +3,12 @@
 import { cn } from "@/lib/utils";
 import { type AspectRatio } from "@/types";
 
-interface RatioOption {
-  value: AspectRatio;
-  label: string;
-  ratio: string; // 用于展示的几何比例
-}
-
-const RATIOS: RatioOption[] = [
-  { value: "1:1", label: "1:1", ratio: "1:1" },
-  { value: "4:3", label: "4:3", ratio: "4:3" },
-  { value: "3:4", label: "3:4", ratio: "3:4" },
-  { value: "16:9", label: "16:9", ratio: "16:9" },
-  { value: "9:16", label: "9:16", ratio: "9:16" },
+const RATIOS: { value: AspectRatio; label: string; w: number; h: number }[] = [
+  { value: "1:1", label: "1:1", w: 1, h: 1 },
+  { value: "4:3", label: "4:3", w: 4, h: 3 },
+  { value: "3:4", label: "3:4", w: 3, h: 4 },
+  { value: "16:9", label: "16:9", w: 16, h: 9 },
+  { value: "9:16", label: "9:16", w: 9, h: 16 },
 ];
 
 interface RatioSelectorProps {
@@ -24,19 +18,15 @@ interface RatioSelectorProps {
 
 export function RatioSelector({ value, onChange }: RatioSelectorProps) {
   return (
-    <div className="space-y-2.5">
-      <label className="text-sm font-medium text-foreground">
-        图片比例
-      </label>
+    <div className="space-y-3">
+      <label className="text-sm font-semibold text-foreground">画幅比例</label>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {RATIOS.map((item) => {
           const isActive = value === item.value;
-          // 根据比例计算预览图形状
-          const [w, h] = item.ratio.split(":").map(Number);
-          const ratioValue = w / h;
-          const previewW = ratioValue >= 1 ? 32 : 32 * ratioValue;
-          const previewH = ratioValue >= 1 ? 32 / ratioValue : 32;
+          const r = item.w / item.h;
+          const pw = r >= 1 ? 28 : Math.round(28 * r);
+          const ph = r >= 1 ? Math.round(28 / r) : 28;
 
           return (
             <button
@@ -44,28 +34,21 @@ export function RatioSelector({ value, onChange }: RatioSelectorProps) {
               type="button"
               onClick={() => onChange(item.value)}
               className={cn(
-                "flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all",
+                "flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-200",
                 isActive
-                  ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                  : "border-border hover:border-primary/30 hover:bg-muted/50",
+                  ? "border-purple-500/60 bg-purple-50 dark:bg-purple-950/20 ring-1 ring-purple-500/20"
+                  : "border-border/60 hover:border-purple-500/25 hover:bg-muted/40",
               )}
             >
-              {/* 比例预览框 */}
               <div
-                className="border-2 border-current rounded-sm transition-colors"
+                className="rounded border-2 transition-all duration-200"
                 style={{
-                  width: `${(previewW / 32) * 100}%`,
-                  aspectRatio: `${w}/${h}`,
-                  maxWidth: 32,
-                  maxHeight: 32,
+                  width: pw,
+                  height: ph,
+                  borderColor: isActive ? "var(--color-primary, oklch(0.65 0.2 280))" : "currentColor",
                 }}
               />
-              <span
-                className={cn(
-                  "text-xs font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
+              <span className={cn("text-[11px] font-medium transition-colors", isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")}>
                 {item.label}
               </span>
             </button>

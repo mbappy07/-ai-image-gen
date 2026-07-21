@@ -1,18 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Grid3X3, LayoutGrid, Images } from "lucide-react";
+import { Image, LayoutGrid, Grid3X3 } from "lucide-react";
 
-interface QuantityOption {
-  value: number;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const QUANTITIES: QuantityOption[] = [
-  { value: 1, label: "1 张", icon: <Images className="size-4" /> },
-  { value: 2, label: "2 张", icon: <LayoutGrid className="size-4" /> },
-  { value: 4, label: "4 张", icon: <Grid3X3 className="size-4" /> },
+const QUANTITIES = [
+  { value: 1, label: "1 张", icon: Image, sub: "单张精细" },
+  { value: 2, label: "2 张", icon: LayoutGrid, sub: "对比选择" },
+  { value: 4, label: "4 张", icon: Grid3X3, sub: "更多灵感" },
 ];
 
 interface QuantitySelectorProps {
@@ -22,28 +16,30 @@ interface QuantitySelectorProps {
 
 export function QuantitySelector({ value, onChange }: QuantitySelectorProps) {
   return (
-    <div className="space-y-2.5">
-      <label className="text-sm font-medium text-foreground">
-        生成数量
-      </label>
+    <div className="space-y-3">
+      <label className="text-sm font-semibold text-foreground">生成数量</label>
 
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
         {QUANTITIES.map((item) => {
           const isActive = value === item.value;
+          const Icon = item.icon;
           return (
             <button
               key={item.value}
               type="button"
               onClick={() => onChange(item.value)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                "flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all duration-200",
                 isActive
-                  ? "border-primary bg-primary/5 text-primary ring-2 ring-primary/20"
-                  : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground hover:bg-muted/50",
+                  ? "border-purple-500/60 bg-purple-50 dark:bg-purple-950/20 ring-1 ring-purple-500/20"
+                  : "border-border/60 hover:border-purple-500/25 hover:bg-muted/40",
               )}
             >
-              {item.icon}
-              {item.label}
+              <Icon className={cn("size-4 transition-colors", isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")} />
+              <span className={cn("text-xs font-medium transition-colors", isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")}>
+                {item.label}
+              </span>
+              <span className="text-[10px] text-muted-foreground/50">{item.sub}</span>
             </button>
           );
         })}
