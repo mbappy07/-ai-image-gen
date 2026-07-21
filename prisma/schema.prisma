@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ====== 用户 ======
+model User {
+  id         String       @id @default(cuid())
+  email      String       @unique
+  name       String?
+  avatar     String?
+  generations Generation[]
+  createdAt  DateTime     @default(now())
+}
+
+// ====== 生成记录 ======
+model Generation {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt         String            @db.Text
+  referenceImage String?           @db.Text  // 参考图 OSS 签名 URL（可能超过 191 字符）
+  ratio          String            @default("1:1")
+  quantity       Int               @default(1)
+  status         GenerationStatus  @default(pending)
+  imageUrls      Json              @default("[]")   // JSON 数组，存储生成图片的 OSS URL 列表
+  errorMessage   String?           @db.Text
+  createdAt      DateTime          @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ====== 生成状态 ======
+enum GenerationStatus {
+  pending
+  processing
+  success
+  failed
+}
