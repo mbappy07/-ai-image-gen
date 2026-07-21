@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         prompt: `AI 换装: 将服装穿在人物身上`,
         ratio: "1:1",
         quantity,
-        referenceImage: JSON.stringify({ clothing: clothingImage, person: personImage }),
+        referenceImage: JSON.stringify({ clothing: clothingImage.split("?")[0], person: personImage.split("?")[0] }),
         status: "processing",
       },
     });

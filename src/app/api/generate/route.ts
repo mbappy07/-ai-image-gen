@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         prompt,
         ratio,
         quantity,
-        referenceImage: referenceImage ?? null,
+        referenceImage: referenceImage ? referenceImage.split("?")[0] : null,
         status: "processing",
       },
     });

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         prompt: `AI 证件照 (${background} 底)`,
         ratio: "1:1",
         quantity: 1,
-        referenceImage: personImage,
+        referenceImage: personImage.split("?")[0],
         status: "processing",
       },
     });
