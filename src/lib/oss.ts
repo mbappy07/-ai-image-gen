@@ -1,14 +1,15 @@
 /**
  * 阿里云 OSS 客户端封装
  *
- * 负责:
- *  - 上传参考图片到 OSS
- *  - 上传生成结果到 OSS
- *  - 生成/删除公开 URL
+ * 两种上传模式:
+ * 1. 浏览器直传 (推荐) — createUploadToken() 返回签名凭证
+ *    浏览器直接 POST 到 OSS，速度快，不占 Vercel 函数时间
+ *
+ * 2. 服务端上传 — uploadBuffer()
+ *    文件先传到 Vercel → 再转存 OSS（仅适合极小文件）
  */
 
 import "server-only";
-
 import OSS from "ali-oss";
 
 // ============================================================
@@ -21,9 +22,7 @@ function getClient(): OSS {
   const accessKeySecret = process.env.OSS_SECRET_KEY;
 
   if (!region || !bucket || !accessKeyId || !accessKeySecret) {
-    throw new Error(
-      "OSS 配置不完整，请检查 .env: OSS_REGION, OSS_BUCKET, OSS_ACCESS_KEY, OSS_SECRET_KEY",
-    );
+    throw new Error("OSS 配置不完整");
   }
 
   return new OSS({
@@ -32,6 +31,7 @@ function getClient(): OSS {
     accessKeyId,
     accessKeySecret,
     secure: true,
+    timeout: 30000,
   });
 }
 
@@ -39,7 +39,6 @@ function getClient(): OSS {
 // 工具
 // ============================================================
 
-/** 生成 OSS 对象 key */
 export function generateOssKey(type: "reference" | "generated", userId: string, filename: string): string {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "/");
   const ext = filename.split(".").pop() ?? "png";
@@ -47,39 +46,99 @@ export function generateOssKey(type: "reference" | "generated", userId: string, 
   return `${type}/${date}/${userId.slice(0, 8)}/${uuid}.${ext}`;
 }
 
-/** 构建 OSS 公开访问 URL */
 export function getOssPublicUrl(key: string): string {
   const region = process.env.OSS_REGION ?? "oss-cn-hangzhou";
   const bucket = process.env.OSS_BUCKET ?? "";
   return `https://${bucket}.${region}.aliyuncs.com/${key}`;
 }
 
-/**
- * 生成 OSS 签名 URL（私有 Bucket 用）
- * 默认 24 小时有效
- */
 export async function getSignedUrl(key: string, expiresSec = 86400): Promise<string> {
   const client = getClient();
   return client.signatureUrl(key, { expires: expiresSec });
 }
 
-// ============================================================
-// 上传 / 删除
-// ============================================================
-
-/** 允许的图片类型 */
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
-/** 最大文件大小: 10MB */
-const MAX_SIZE = 10 * 1024 * 1024;
+// ============================================================
+// 浏览器直传凭证
+// ============================================================
+
+export interface UploadTokenParams {
+  filename: string;
+  userId: string;
+  type: "reference" | "generated";
+}
+
+export interface UploadToken {
+  /** 上传目标 URL */
+  uploadUrl: string;
+  /** OSS object key */
+  ossKey: string;
+  /** 最终访问 URL（签名） */
+  signedUrl: string;
+  /** 表单字段 */
+  formData: Record<string, string>;
+}
+
+/**
+ * 生成 OSS 浏览器直传凭证
+ * 调用例：POST /api/upload → { uploadUrl, ossKey, signedUrl, formData }
+ */
+export async function createUploadToken(opts: UploadTokenParams): Promise<UploadToken> {
+  const ext = opts.filename.toLowerCase().split(".").pop() ?? "";
+  const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+
+  if (!allowed.includes("." + ext)) {
+    throw new Error(`不支持的文件类型 (.${ext})，仅允许: ${ALLOWED_EXTENSIONS.join(", ")}`);
+  }
+
+  const ossKey = generateOssKey(opts.type, opts.userId, opts.filename);
+  const client = getClient();
+  const bucket = process.env.OSS_BUCKET ?? "";
+  const region = process.env.OSS_REGION ?? "";
+  const uploadUrl = `https://${bucket}.${region}.aliyuncs.com`;
+
+  // 生成 PostObject 签名
+  const policy = {
+    expiration: new Date(Date.now() + 300 * 1000).toISOString(), // 5 分钟有效
+    conditions: [
+      ["content-length-range", 0, 10 * 1024 * 1024], // 10MB
+    ],
+  };
+
+  const policyBase64 = Buffer.from(JSON.stringify(policy)).toString("base64");
+  const accessKeyId = process.env.OSS_ACCESS_KEY ?? "";
+  const accessKeySecret = process.env.OSS_SECRET_KEY ?? "";
+
+  // HMAC-SHA1 签名
+  const cryptoLib = await import("node:crypto");
+  const hmac = cryptoLib.createHmac("sha1", accessKeySecret);
+  hmac.update(policyBase64);
+  const signature = hmac.digest("base64");
+
+  const signedUrl = await getSignedUrl(ossKey);
+
+  return {
+    uploadUrl,
+    ossKey,
+    signedUrl,
+    formData: {
+      key: ossKey,
+      policy: policyBase64,
+      OSSAccessKeyId: accessKeyId,
+      signature,
+      success_action_status: "200",
+    },
+  };
+}
+
+// ============================================================
+// 服务端直传 (传统方案，Vercel 超时风险)
+// ============================================================
 
 export interface UploadOptions {
-  /** 文件名 (用于推断扩展名) */
   filename: string;
-  /** 用户标识 */
   userId: string;
-  /** 分类: reference | generated */
   type: "reference" | "generated";
 }
 
@@ -89,51 +148,27 @@ export interface UploadResult {
   size: number;
 }
 
-/**
- * 上传文件到 OSS
- *
- * @param file  Buffer（服务端）或 File（浏览器端通过 FormData 传入）
- * @param opts  上传选项
- * @returns     { ossKey, url, size }
- */
-/**
- * 上传 Buffer 到 OSS（服务端专用）
- */
 export async function uploadBuffer(
   buf: Buffer,
   opts: UploadOptions,
 ): Promise<UploadResult> {
-  // ---- 类型校验 ----
   const ext = opts.filename.toLowerCase().split(".").pop() ?? "";
   const mimeMap: Record<string, string> = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    webp: "image/webp",
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
   };
   const mime = mimeMap[ext];
+  if (!mime) throw new Error(`不支持的文件类型 (.${ext})`);
 
-  if (!mime || !ALLOWED_TYPES.includes(mime)) {
-    throw new Error(
-      `不支持的文件类型 (.${ext})，仅允许: ${ALLOWED_EXTENSIONS.join(", ")}`,
-    );
+  if (buf.byteLength > 10 * 1024 * 1024) {
+    throw new Error("文件过大，限制 10MB");
   }
 
-  // ---- 大小校验 ----
-  if (buf.byteLength > MAX_SIZE) {
-    const mb = (buf.byteLength / 1024 / 1024).toFixed(1);
-    throw new Error(`文件过大 (${mb}MB)，限制 10MB`);
-  }
-
-  // ---- 上传 ----
   const ossKey = generateOssKey(opts.type, opts.userId, opts.filename);
   const client = getClient();
 
   const result = await client.put(ossKey, buf, {
     mime,
-    headers: {
-      "Cache-Control": "public, max-age=31536000",
-    },
+    headers: { "Cache-Control": "public, max-age=31536000" },
   });
 
   if (result.res.status !== 200) {
@@ -141,31 +176,12 @@ export async function uploadBuffer(
   }
 
   const signedUrl = await getSignedUrl(ossKey);
-
   return { ossKey, url: signedUrl, size: buf.byteLength };
 }
 
-/**
- * @deprecated Use uploadBuffer instead (Vercel compatible)
- */
-export async function uploadImage(
-  file: Buffer | File,
-  opts: UploadOptions,
-): Promise<UploadResult> {
-  const buf = file instanceof File
-    ? Buffer.from(await file.arrayBuffer())
-    : file;
-  return uploadBuffer(buf, opts);
-}
-
-/**
- * 删除 OSS 文件（如果存在）
- */
 export async function deleteImage(ossKey: string): Promise<void> {
   try {
     const client = getClient();
     await client.delete(ossKey);
-  } catch {
-    // 文件不存在也忽略
-  }
+  } catch { /* ignore */ }
 }

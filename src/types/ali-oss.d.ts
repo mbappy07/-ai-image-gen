@@ -6,6 +6,7 @@ declare module "ali-oss" {
     accessKeySecret: string;
     secure?: boolean;
     endpoint?: string;
+    timeout?: number;
   }
 
   interface PutResult {

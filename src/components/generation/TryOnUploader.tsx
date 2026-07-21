@@ -49,18 +49,29 @@ export function TryOnUploader({ onChange }: TryOnUploaderProps) {
       };
       reader.readAsDataURL(file);
 
-      // 上传 OSS
+      // 浏览器直传 OSS
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const json = await res.json();
-        if (!res.ok || !json.success) throw new Error(json.error ?? "上传失败");
+        // 1. 获取凭证
+        const credRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name }),
+        });
+        const credJson = await credRes.json();
+        if (!credRes.ok || !credJson.success) throw new Error(credJson.error);
 
-        const ossUrl: string = json.data.url;
+        const { uploadUrl, formData: fields, signedUrl } = credJson.data;
+        const ossForm = new FormData();
+        Object.entries(fields).forEach(([k, v]) => ossForm.append(k, v as string));
+        ossForm.append("file", file);
+
+        // 2. 直传 OSS
+        const ossRes = await fetch(uploadUrl, { method: "POST", body: ossForm });
+        if (ossRes.status !== 200) throw new Error(`OSS ${ossRes.status}`);
+
         setSlots((prev) => ({
           ...prev,
-          [slot]: { ...prev[slot], ossUrl, uploading: false },
+          [slot]: { ...prev[slot], ossUrl: signedUrl as string, uploading: false },
         }));
       } catch {
         setSlots((prev) => ({
