@@ -10,7 +10,6 @@
 import "server-only";
 
 import OSS from "ali-oss";
-import imageSize from "image-size";
 
 // ============================================================
 // 配置
@@ -122,16 +121,6 @@ export async function uploadImage(
   if (buf.byteLength > MAX_SIZE) {
     const mb = (buf.byteLength / 1024 / 1024).toFixed(1);
     throw new Error(`文件过大 (${mb}MB)，限制 10MB`);
-  }
-
-  // ---- 分辨率校验 ----
-  const dimensions = imageSize(buf);
-  if (dimensions.width && dimensions.height) {
-    if (dimensions.width < 240 || dimensions.height < 240) {
-      throw new Error(
-        `图片分辨率过低 (${dimensions.width}×${dimensions.height})，至少需要 240×240 像素`,
-      );
-    }
   }
 
   // ---- 上传 ----
