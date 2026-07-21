@@ -50,17 +50,25 @@ export function TryOnUploader({ onChange }: TryOnUploaderProps) {
       reader.readAsDataURL(file);
 
       // 上传 OSS
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error ?? "上传失败");
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.error ?? "上传失败");
 
-      const ossUrl: string = json.data.url;
-      setSlots((prev) => ({
-        ...prev,
-        [slot]: { ...prev[slot], ossUrl, uploading: false },
-      }));
+        const ossUrl: string = json.data.url;
+        setSlots((prev) => ({
+          ...prev,
+          [slot]: { ...prev[slot], ossUrl, uploading: false },
+        }));
+      } catch {
+        setSlots((prev) => ({
+          ...prev,
+          [slot]: { ...prev[slot], preview: null, ossUrl: null, uploading: false },
+        }));
+        alert("上传失败，请重试");
+      }
     },
     [],
   );

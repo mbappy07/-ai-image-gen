@@ -96,8 +96,11 @@ export interface UploadResult {
  * @param opts  上传选项
  * @returns     { ossKey, url, size }
  */
-export async function uploadImage(
-  file: Buffer | File,
+/**
+ * 上传 Buffer 到 OSS（服务端专用）
+ */
+export async function uploadBuffer(
+  buf: Buffer,
   opts: UploadOptions,
 ): Promise<UploadResult> {
   // ---- 类型校验 ----
@@ -117,9 +120,6 @@ export async function uploadImage(
   }
 
   // ---- 大小校验 ----
-  const buf = (file && typeof file === "object" && "arrayBuffer" in file)
-    ? Buffer.from(await (file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer())
-    : (file as Buffer);
   if (buf.byteLength > MAX_SIZE) {
     const mb = (buf.byteLength / 1024 / 1024).toFixed(1);
     throw new Error(`文件过大 (${mb}MB)，限制 10MB`);
@@ -143,6 +143,19 @@ export async function uploadImage(
   const signedUrl = await getSignedUrl(ossKey);
 
   return { ossKey, url: signedUrl, size: buf.byteLength };
+}
+
+/**
+ * @deprecated Use uploadBuffer instead (Vercel compatible)
+ */
+export async function uploadImage(
+  file: Buffer | File,
+  opts: UploadOptions,
+): Promise<UploadResult> {
+  const buf = file instanceof File
+    ? Buffer.from(await file.arrayBuffer())
+    : file;
+  return uploadBuffer(buf, opts);
 }
 
 /**

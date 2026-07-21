@@ -46,14 +46,19 @@ export function IdPhotoUploader({ onChange }: IdPhotoUploaderProps) {
     };
     reader.readAsDataURL(file);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.error ?? "上传失败");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error ?? "上传失败");
 
-    const ossUrl: string = json.data.url;
-    setState((prev) => ({ ...prev, ossUrl, uploading: false }));
+      const ossUrl: string = json.data.url;
+      setState((prev) => ({ ...prev, ossUrl, uploading: false }));
+    } catch {
+      setState((prev) => ({ ...prev, preview: null, ossUrl: null, uploading: false }));
+      alert("上传失败，请重试");
+    }
   }, []);
 
   const handleFile = useCallback(

@@ -36,11 +36,11 @@ export function ImageUploader({ onUpload, onRemove }: ImageUploaderProps) {
         const url: string = json.data.url;
         setOssUrl(url);
         onUpload?.(url);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "上传失败";
+      } catch {
         setPreview(null);
+        setOssUrl(null);
         if (inputRef.current) inputRef.current.value = "";
-        throw new Error(msg);
+        alert("上传失败，请重试");
       } finally {
         setIsUploading(false);
       }
