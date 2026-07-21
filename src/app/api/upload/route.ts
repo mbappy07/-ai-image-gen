@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const file = formData.get("file");
-  if (!file || !(file instanceof File)) {
+  if (!file || typeof file === "string") {
     return NextResponse.json(
       { success: false, error: "请上传一个图片文件 (字段名: file)" },
       { status: 400 },
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
   // 3. 上传到 OSS
   // ----------------------------------------------------------
   try {
-    const result = await uploadImage(file, {
-      filename: file.name || "image.png",
+    const result = await uploadImage(file as File, {
+      filename: (file as File).name || "image.png",
       userId,
       type: "reference",
     });

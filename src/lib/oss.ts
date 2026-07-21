@@ -117,7 +117,9 @@ export async function uploadImage(
   }
 
   // ---- 大小校验 ----
-  const buf = file instanceof File ? Buffer.from(await file.arrayBuffer()) : file;
+  const buf = (file && typeof file === "object" && "arrayBuffer" in file)
+    ? Buffer.from(await (file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer())
+    : (file as Buffer);
   if (buf.byteLength > MAX_SIZE) {
     const mb = (buf.byteLength / 1024 / 1024).toFixed(1);
     throw new Error(`文件过大 (${mb}MB)，限制 10MB`);
